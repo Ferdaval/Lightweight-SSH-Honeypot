@@ -255,4 +255,80 @@ The system is a **lightweight, low-interaction SSH honeypot** that emulates a vu
 - The operator must ensure the honeypot IP is not listed on public blocklists or Shodan as a honeypot to maintain deception effectiveness.[^5]
 <span style="display:none">[^11][^12][^13][^14][^15]</span>
 
+***
+
+## Project Structure
+
+The system is split into **7 focused modules**, each traceable to specific requirements :
+
+
+| File | Purpose | Requirements |
+| :-- | :-- | :-- |
+| `main.py` | Entry point, runs all coroutines | US-11 |
+| `honeypot.py` | SSH server, auth capture | FR-1, FR-2, FR-5 |
+| `enrichment.py` | GeoIP + AbuseIPDB lookup | FR-3 |
+| `alerting.py` | Webhook/email alerts | FR-5, US-09 |
+| `reporter.py` | Daily HTML/PDF reports | FR-4, US-06–08 |
+| `scheduler.py` | Cron-style async scheduler | FR-4.1 |
+| `config.yaml` | All tunables in one place | US-02, US-10 |
+
+
+***
+
+## System Architecture
+
+
+---
+
+## Module Breakdown
+
+### `honeypot.py` — Core Engine
+
+Built on **asyncssh**, it binds to the configured port and presents a fully configurable SSH banner (FR-1.1, FR-1.4). Every `password_auth_requested` call is permanently denied (FR-1.3) and asynchronously dispatches a log + enrichment + alert pipeline so that the connection response is never delayed .[^1]
+
+### `enrichment.py` — IP Intelligence
+
+Uses **ip-api.com** (free, no key required) for country/city/ASN enrichment and optionally calls **AbuseIPDB** for abuse confidence scores. All lookups are async with a 3-second timeout and an in-memory cache — if a lookup fails, the log entry is still written with `"geo": null` (satisfying FR-3 acceptance criteria) .[^2]
+
+### `alerting.py` — Real-Time Alerts
+
+Maintains a per-IP sliding time window. When an IP exceeds the `threshold` within `window_seconds`, a formatted alert fires to the configured Slack/Discord webhook (FR-5.1, FR-5.2) . Both values are hot-configurable in `config.yaml` without code changes (US-10).[^3]
+
+### `reporter.py` — Daily Reports
+
+Reads JSON log files, calculates top usernames/passwords/IPs/countries, computes a 7-day trend with ↑/↓/→ indicator, and renders a self-contained dark-themed **HTML** report with an embedded Chart.js trend graph . **PDF** output is available if `weasyprint` is installed (FR-4.3).
+
+### Docker Deployment
+
+A single `./setup.sh` call generates the RSA host key, builds the image, and starts the container (US-11) . The compose file enforces a `128m` memory cap (NFR-2), runs as a non-root `honeypot` user (NFR-4), and maps logs/reports to host volumes so data persists across restarts .
+
+***
+
+## Quick Start
+
+```bash
+# Clone project & run one-command setup
+chmod +x setup.sh && ./setup.sh
+
+# Watch live attack logs
+docker logs -f ssh_honeypot
+
+# Generate a report manually anytime
+docker exec ssh_honeypot python reporter.py
+```
+
+To run on real port 22, update `docker-compose.yml` ports to `"22:2222"` and move your legitimate SSH daemon to a non-standard port .
+
+***
+
+## Key Design Decisions
+
+- **asyncssh over paramiko**  — fully async, handles 500+ concurrent connections without threading (NFR-1)[^1][^4]
+- **JSON log format** — each line is a valid JSON object, making downstream processing with pandas, Elasticsearch, or Splunk trivial (FR-2.2)
+- **No real shell ever opened** — auth is always rejected at the protocol level, not the OS level, eliminating any risk of accidental command execution (FR-1.2)
+- **GDPR note** — passwords are stored as plaintext in logs for threat intelligence purposes; for production use in the EU, consider hashing with SHA-256 before writing to disk (NFR-5)[^5]
+<span style="display:none">[^10][^11][^12][^13][^14][^15][^16][^17][^6][^7][^8][^9]</span>
+
+<div align="center">⁂</div>
+
 <div align="center">⁂</div>
