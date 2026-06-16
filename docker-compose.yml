@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  honeypot:
+    build: .
+    container_name: ssh_honeypot
+    ports:
+      - "2222:2222"       # Change to "22:2222" in production
+    volumes:
+      - ./logs:/app/logs           # Persistent logs (US-11)
+      - ./reports:/app/reports     # Persistent reports
+      - ./keys:/app/keys           # RSA host key
+    restart: unless-stopped
+    mem_limit: 128m                # NFR-2: memory cap
+    cpus: "0.5"                    # NFR-3: CPU cap
+    networks:
+      - honeypot_net
+    environment:
+      - TZ=UTC
+
+networks:
+  honeypot_net:
+    driver: bridge
+    # Isolate from other containers (FR-6.1, US-12)
+    internal: false
