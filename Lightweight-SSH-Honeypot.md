@@ -277,6 +277,10 @@ The system is split into **7 focused modules**, each traceable to specific requi
 
 ## System Architecture
 
+![SSH Honeypot System Architecture](architecture.jpg)
+
+
+
 
 ---
 

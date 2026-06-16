@@ -1,0 +1,1 @@
+{"caption": "SSH Honeypot System Architecture", "description": "Flow diagram showing module interactions: honeypot.py \u2192 enrichment.py, alerting.py, logs \u2192 reporter.py \u2192 HTML/PDF reports"}
