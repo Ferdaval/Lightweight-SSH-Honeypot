@@ -1,0 +1,43 @@
+# SSH Honeypot Configuration (config.yaml)
+# ==========================================
+
+server:
+  host: "0.0.0.0"
+  port: 2222                        # Use 22 in production with capability binding
+  banner: "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.5"
+  fake_os: "Ubuntu 20.04 LTS"
+  host_key: "keys/server.key"       # RSA host key path
+
+logging:
+  log_dir: "logs/"
+  log_level: "INFO"
+  rotate_daily: true
+  format: "json"                    # json | csv
+
+geo_enrichment:
+  enabled: true
+  provider: "ip-api"                # ip-api (free) | maxmind | abuseipdb
+  abuseipdb_api_key: "YOUR_KEY_HERE"
+
+alerting:
+  enabled: true
+  threshold: 10                     # attempts before alert fires
+  window_seconds: 60
+  channels:
+    webhook_url: ""                 # Slack/Discord webhook URL
+    email: ""
+
+reporting:
+  enabled: true
+  schedule: "00:00"                 # Daily report time (UTC)
+  output_dir: "reports/"
+  formats:
+    - html
+    - pdf
+  email_report: false
+  recipient_email: ""
+
+security:
+  max_connections: 500
+  connection_timeout: 30
+  memory_limit_mb: 128
